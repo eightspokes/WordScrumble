@@ -15,48 +15,54 @@ struct ContentView: View {
     @State private var errorTitle = ""
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var currentScore = 0
     
     var body: some View {
         
         VStack{
-            
             Text("Word scrumble")
                 .frame(width: 300, height: 50, alignment: .center)
-                
+            
                 .font(.largeTitle.bold())
+            
+            NavigationView{
                 
-               
-        NavigationView{
-          
+                VStack{
                     
-                 
-            List{
-                
-                
-                Section("Enter your word"){
-                    TextField("Enter your word", text: $newWord)
-                        .autocapitalization(.none)
-                }
-                Section(){
-                    ForEach(usedWords, id: \.self){
-                        word in
-                        HStack{
-                            Image(systemName: "\(word.count).circle")
-                            Text(word)
+                    List{
+                        Section("Enter your word"){
+                            TextField("Enter your word", text: $newWord)
+                                .autocapitalization(.none)
                         }
+                        Section(){
+                            ForEach(usedWords, id: \.self){
+                                word in
+                                HStack{
+                                    Image(systemName: "\(word.count).circle")
+                                    Text(word)
+                                }
+                            }
+                        }
+                        Text("Current score \(currentScore)")
+                            .foregroundColor(.red)
                         
+                    }.navigationTitle(rootWord)
+                        .onSubmit {addNewWord(word: newWord)}
+                        .onAppear(perform: startGame)
+                    
+                        .alert(errorTitle, isPresented: $showingError){
+                            Button("OK", role: .cancel){}
                             
-                    }
-                    
-                }
-            }.navigationTitle(rootWord)
-                .onSubmit {addNewWord(word: newWord)}
-                .onAppear(perform: startGame)
-                .alert(errorTitle, isPresented: $showingError){
-                    Button("OK", role: .cancel){}
-                    
-                }message: {
-                    Text(errorMessage)
+                        }message: {
+                            Text(errorMessage)
+                        }
+                        .toolbar{
+                            ToolbarItem(placement:.bottomBar){
+                                Button("Restart game"){
+                                    startGame()
+                                }
+                            }
+                        }
                 }
             }
         }
@@ -66,12 +72,15 @@ struct ContentView: View {
             if let fileConents = try? String(contentsOf: fileUrl){
                 let allWords = fileConents.components(separatedBy: "\n")
                 rootWord = allWords.randomElement() ?? "silkwork"
+                //This will reset used words for new game
+                usedWords = [String]()
+                currentScore = 0
                 return
             }
         }
         fatalError("Could not load start.txt ")
-            
     }
+    
     
     func addNewWord(word: String){
         guard  word.utf16.count > 0 else {return}
@@ -90,6 +99,7 @@ struct ContentView: View {
         }
         
         withAnimation{
+            currentScore += trimmed.count
             usedWords.insert(trimmed, at: 0)
         }
         
@@ -97,7 +107,12 @@ struct ContentView: View {
     }
     
     func isOriginal(word: String) -> Bool {
-        return !usedWords.contains(word)
+        if usedWords.contains(word) || word == rootWord || word.utf16.count < 3  {
+            
+            return false
+        }
+        
+        return true
     }
     func isPossible(word: String) -> Bool {
         var rootCopy = rootWord
@@ -123,6 +138,7 @@ struct ContentView: View {
         errorMessage = message
         showingError = true
     }
+    
 }
 
 struct ContentView_Previews: PreviewProvider {
